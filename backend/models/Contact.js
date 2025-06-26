@@ -5,6 +5,7 @@ const contactSchema = new mongoose.Schema({
   correo: String,
   telefono: String,
   mensaje: String,
+  recaptchaToken: Boolean,
   fecha: { type: Date, default: Date.now }
 });
 

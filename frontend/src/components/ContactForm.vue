@@ -266,11 +266,15 @@
                 <textarea id="message" v-model="form.message" rows="4" required
                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"></textarea>
               </div>
-              
+
+              <div id="recaptcha-container" class=""></div>
+
               <button type="submit" 
                       class="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white font-bold py-3 px-6 rounded-lg hover:from-orange-600 hover:to-pink-600 transition shadow-lg">
                 Enviar Mensaje
               </button>
+              <div id="recaptcha-container" class="flex justify-center my-4"></div>
+
             </form>
           </div>
         </div>
@@ -463,6 +467,14 @@ const benefits = ref([
 ])
 
 onMounted(() => {
+  if (window.grecaptcha) {
+    window.grecaptcha.render(document.querySelector('.g-recaptcha'), {
+      sitekey: '6Le31G0rAAAAAAZ4mk2jAk9A2_a0o8vOQ7kksEye'
+    });
+  }
+})
+
+onMounted(() => {
   // Animación para el slider de destinos
   setInterval(() => {
     currentSlide.value = (currentSlide.value + 1) % featuredDestinations.value.length
@@ -478,11 +490,42 @@ const scrollToContact = () => {
 }
 
 const submitForm = async () => {
-  // Simulación de envío de formulario
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  alert('Gracias por tu mensaje. Nos pondremos en contacto contigo pronto.')
-  form.value = { name: '', email: '', phone: '', message: '' }
-}
+  // Obtener el token de reCAPTCHA
+  const recaptchaToken = window.grecaptcha.getResponse();
+  if (!recaptchaToken) {
+    alert('Por favor, completa el reCAPTCHA.');
+    return;
+  }
+
+  // Envía los datos y el token al backend
+  try {
+    const response = await fetch('http://localhost:4000/api/contacts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: form.value.name,
+        correo: form.value.email,
+        telefono: form.value.phone,
+        mensaje: form.value.message,
+        recaptchaToken
+      })
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      alert('Gracias por tu mensaje. Nos pondremos en contacto contigo pronto.');
+      form.value = { name: '', email: '', phone: '', message: '' };
+      window.grecaptcha.reset(); // Limpia el reCAPTCHA
+    } else {
+      alert(data.error || 'Error al enviar el mensaje.');
+      window.grecaptcha.reset();
+    }
+  } catch (error) {
+    alert('Error de red. Intenta de nuevo.');
+    window.grecaptcha.reset();
+  }
+};
+
 </script>
 
 <style>
